@@ -45,37 +45,47 @@ def PicosMaximos(Dataframe, intervalosDeBusqueda):
 
     return picos
 
-def parametro_de_red(Angle, indices_de_miler):
-    lamda = 1.541  # En Amstrongs
-    Sexagesimal_Angle = Angle*np.pi/180
-    distancia_interplanar = lamda/(2*np.sin(Sexagesimal_Angle/2))
+def parametro_de_red(Picos, indices_de_miller):
     
-    print(distancia_interplanar)
-    Parametro_de_red = np.sqrt(distancia_interplanar**2 * (
-        indices_de_miler[0]**2 + indices_de_miler[1]**2 + indices_de_miler[2] ** 2))
-    return Parametro_de_red
+    lamda = 1.541  # En Amstrongs        
+    parametros_de_red = []
+    for pico, indice in zip(Picos, indices_de_miller):
 
+        Sexagesimal_Angle = pico*np.pi/180
+    
+        distancia_interplanar = lamda/(2*np.sin(Sexagesimal_Angle/2))
+        Parametro_de_red = np.sqrt(distancia_interplanar**2 * (indice[0]**2 + indice[1]**2 + indice[2] ** 2))
+        parametros_de_red.append(Parametro_de_red)
+        #print(parametros_de_red)
+    try:
+        return sum(parametros_de_red) / len(parametros_de_red)
+    except:
+        return 'Faltan datos'
 
-rangos_de_busqueda = [(25,26), (27,28),(30, 32), (44, 46),(53, 54.5), (55, 57),
+#rangos_de_busqueda = [(25,26), (27,28), (30, 32), (44, 46), (53, 54.5), (55, 57), (65, 67), (74, 76)]
+#indices_de_miller = [[2, 0 ,0], [1, 1, 1], [0, 0, 2], [0, 2, 2], [1, 1, 3], [2, 2, 2], [0, 0, 4], [0, 2, 4]]
+
+rangos_de_busqueda = [(27,28), (30, 32), (44, 46), (53, 54.5), (55, 57),
                       (65, 67), (74, 76)]
+indices_de_miller = [[1, 1, 1], [0, 0, 2], [0, 2, 2], [1, 1, 3], [2, 2, 2], [0, 0, 4], [0, 2, 4]]
 
 
-def Resultados(Path_Archivos, rangos_de_busqueda, scale='Normal'):
+def Resultados(Path_Archivos, rangos_de_busqueda, scale='normal'):
     archivos = [os.path.join(dp, f) for dp, dn, filenames in os.walk(
         Path_Archivos) for f in filenames if os.path.splitext(f)[1] == '.csv']
     Todos_los_parametros_red = []
     temperaturas = []
     plt.figure()
 
-    background = 1
+    background = 1 if scale=='log'  else 0
     for archivo in archivos:
         name = archivo.split("\\")[1][:-4]
         Datos = DataManagement(archivo)
         print("Picos:" + name)
         Picos = PicosMaximos(Datos, rangos_de_busqueda)
         print(Picos)
-        print("La distancia interplanar  y Parametro de red (En Amstrongs) son  recpectivamente: " + name)
-        Parametro_de_red = parametro_de_red(Picos[2], [0, 0, 2])
+        print("El promedio de Parametros de red (En Amstrongs) es: " + name)
+        Parametro_de_red = parametro_de_red(Picos, indices_de_miller)
         print(Parametro_de_red)
         Todos_los_parametros_red.append(Parametro_de_red)
         print('')
@@ -85,26 +95,28 @@ def Resultados(Path_Archivos, rangos_de_busqueda, scale='Normal'):
             Temperatura = 30
         temperaturas.append(Temperatura)
 
-        plt.plot(np.array(Datos.iloc[:, 0]), np.array(Datos.iloc[:, 1]) * background, label=name, markersize=80)
-        plt.yscale("log")
-        background = background * 10
-        
+        if scale=='log':
+            plt.plot(np.array(Datos.iloc[:, 0]), np.array(Datos.iloc[:, 1]) * background, label=name, markersize=80)
+            plt.yscale("log")
+            background = background * 10
+        else:
+            plt.plot(np.array(Datos.iloc[:, 0]), np.array(Datos.iloc[:, 1]) + background, label=name, markersize=80)
+            background = background + 50000
         plt.grid()
         plt.title(
             "Difractograma de una muestra de Sal Natural", fontsize=30)
         plt.xlabel('Ángulo de difracción 2$\\theta$', fontsize=30)
-        plt.xticks(fontsize=24)
+        plt.xticks(np.arange(0,110,10),fontsize=24)
         plt.ylabel("Intensidad(I)", fontsize=30)
         plt.yticks(fontsize=24)
-        plt.legend(loc=1, prop={'size': 15}, facecolor="#b5f1d2")
-        #background = background + 50000
+        plt.legend(loc=1, prop={'size': 18}, facecolor="#b5f1d2")
         plt.show(block=False)
 
     plt.figure()
     plt.plot(temperaturas, Todos_los_parametros_red,
              '*-', color='red', markersize=20)
     plt.grid()
-    plt.title("Parámetros de red para cada temperatura", fontsize=30)
+    plt.title("Promedio de parámetros de red para cada temperatura", fontsize=30)
     plt.xlabel('Temperatura ($^{\circ}C$)', fontsize=30)
     plt.xticks(fontsize=24)
     plt.ylabel("a ($ ~\AA$)", fontsize=30)
@@ -112,4 +124,4 @@ def Resultados(Path_Archivos, rangos_de_busqueda, scale='Normal'):
     plt.show()
 
 
-Resultados("./", rangos_de_busqueda)
+Resultados("./", rangos_de_busqueda, scale='loga')
